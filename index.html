@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gordimovies · Maty & Valen</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Theme variables ── */
+:root {
+  --accent:     #c9a84c;
+  --accent2:    #c084f5;
+  --bg:         #080810;
+  --surface:    #141422;
+  --border:     #252535;
+  --text:       #e8e0d4;
+  --hero-tint:  rgba(8,8,16,.95);
+}
+/* Maty: verde jade + púrpura */
+.theme-maty {
+  --accent:     #4ecb8d;
+  --accent2:    #9b59f5;
+  --surface:    #0f1a14;
+  --border:     #1e3028;
+  --hero-tint:  rgba(8,14,10,.95);
+}
+/* Valen: rojo frutilla + beige */
+.theme-valen {
+  --accent:     #e8445a;
+  --accent2:    #f0d9b5;
+  --surface:    #1a0f12;
+  --border:     #2e1a1e;
+  --hero-tint:  rgba(14,8,10,.95);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:#e8e0d4;font-family:'Outfit',sans-serif;min-height:100vh}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#2a2a40;border-radius:99px}
+button,input,select{font-family:inherit}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes shimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}
+@keyframes ken{from{transform:scale(1)}to{transform:scale(1.06)}}
+.fu{animation:fadeUp .35s cubic-bezier(.16,1,.3,1) both}
+.skel{background:linear-gradient(90deg,#10101c 0%,#1c1c2e 50%,#10101c 100%);background-size:600px 100%;animation:shimmer 1.5s infinite linear;border-radius:8px}
+/* Top bar - just logo + profile chip */
+nav{position:sticky;top:0;z-index:500;background:rgba(8,8,16,.94);backdrop-filter:blur(16px);border-bottom:1px solid #14141e;display:flex;align-items:center;height:52px;padding:0 16px;gap:8px}
+.brand{font-family:'Bebas Neue';font-size:24px;letter-spacing:2.5px;margin-right:auto;line-height:1;flex-shrink:0;display:flex;align-items:baseline;gap:0}
+.brand span:first-child{color:var(--accent)}
+.brand small{font-family:'Outfit';font-size:10px;color:#2a2a40;margin-left:10px;letter-spacing:.5px;font-weight:400}
+
+/* Hide tab buttons from top nav on mobile */
+.tab-btn{background:none;border:none;border-bottom:2px solid transparent;color:#444;padding:0 12px;height:100%;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap}
+.tab-btn.active{border-bottom-color:var(--accent);color:var(--accent)}
+
+/* Bottom tab bar - mobile only */
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:500;background:rgba(8,8,16,.97);backdrop-filter:blur(16px);border-top:1px solid #14141e;height:60px;padding-bottom:env(safe-area-inset-bottom)}
+.bottom-nav-inner{display:flex;height:60px}
+.bottom-tab{flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:#444;transition:color .15s;-webkit-tap-highlight-color:transparent;padding:0}
+.bottom-tab.active{color:var(--accent)}
+.bottom-tab-icon{font-size:20px;line-height:1}
+.bottom-tab-label{font-size:9px;font-weight:700;letter-spacing:.3px}
+
+.view{display:none}.view.active{display:block}
+
+/* On mobile use bottom nav, hide top tabs */
+@media(max-width:600px){
+  .tab-btn{display:none}
+  .bottom-nav{display:block}
+  /* Add padding so content doesn't hide behind bottom nav */
+  body{padding-bottom:60px}
+}
+/* On desktop keep top tabs, hide bottom nav */
+@media(min-width:601px){
+  .tab-btn{display:flex;align-items:center}
+  .bottom-nav{display:none}
+}
+.hero{position:relative;height:300px;overflow:hidden;margin-bottom:32px;cursor:pointer}
+.hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;animation:ken 12s ease-in-out alternate infinite}
+.hero-grad{position:absolute;inset:0;background:linear-gradient(105deg,rgba(8,8,16,.95) 0%,rgba(8,8,16,.5) 55%,transparent 100%)}
+.hero-grad2{position:absolute;inset:0;background:linear-gradient(to top,rgba(8,8,16,1) 0%,transparent 55%)}
+.hero-content{position:absolute;bottom:24px;left:18px;right:18px;max-width:370px}
+.hero-label{font-size:10px;font-weight:700;color:var(--accent);letter-spacing:2.5px;text-transform:uppercase;margin-bottom:7px}
+.hero-title{font-family:'Bebas Neue';font-size:36px;color:#fff;line-height:.95;letter-spacing:.5px;margin-bottom:8px}
+.hero-meta{display:flex;gap:12px;align-items:center;margin-bottom:9px;font-size:12px}
+.hero-overview{font-size:12px;color:#bbb;line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:14px}
+.hero-btn{border:none;border-radius:8px;padding:9px 22px;font-weight:700;font-size:13px;cursor:pointer;background:var(--accent);color:var(--bg);transition:all .15s}
+.hero-btn.in-list{background:transparent;border:1px solid #5abe78;color:#5abe78;cursor:default}
+.genre-bar{display:flex;gap:8px;padding:0 16px 22px;overflow-x:auto;scrollbar-width:none}
+.genre-bar::-webkit-scrollbar{display:none}
+.pill{border:none;border-radius:99px;padding:6px 15px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0;background:var(--surface);color:#666}
+.pill.active{background:var(--accent);color:var(--bg)}
+.section{margin-bottom:44px}
+.section-head{display:flex;align-items:center;gap:10px;padding:0 16px;margin-bottom:14px}
+.section-title{font-family:'Bebas Neue';font-size:20px;letter-spacing:.8px;color:#fff;white-space:nowrap}
+.section-line{flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
+.feed-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;padding:0 16px}
+.card-wrap{width:100%}
+.load-more-wrap{display:flex;justify-content:center;padding:20px 16px 8px}
+.load-more-btn{background:var(--surface);border:1px solid var(--border);color:#888;border-radius:10px;padding:10px 32px;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}
+.load-more-btn:hover{background:#1e1e30;color:#e8e0d4}
+.card{position:relative;border-radius:8px;overflow:hidden;aspect-ratio:2/3;background:#12121e;cursor:pointer;transition:transform .25s cubic-bezier(.2,.8,.3,1),box-shadow .25s}
+.card:hover{transform:translateY(-5px) scale(1.03);box-shadow:0 20px 48px rgba(0,0,0,.7)}
+.card img{width:100%;height:100%;object-fit:cover;display:block}
+.card-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;color:#222;background:#12121e}
+.card-score{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);border-radius:5px;padding:2px 6px;font-size:10px;font-weight:700;color:#f5c518}
+.card-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(5,5,14,.98) 0%,rgba(5,5,14,.6) 50%,transparent 100%);opacity:0;transition:opacity .2s;display:flex;flex-direction:column;justify-content:flex-end;padding:10px}
+.card:hover .card-overlay{opacity:1}
+.card:hover .card-score{display:none}
+.card-overlay-title{font-family:'Bebas Neue';font-size:13px;color:#fff;line-height:1.15;margin-bottom:3px}
+.card-overlay-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;font-size:10px;color:#888}
+.add-btn{border:none;border-radius:99px;padding:5px 0;font-size:11px;font-weight:700;cursor:pointer;width:100%;background:var(--accent);color:var(--bg);transition:all .15s}
+.add-btn.in-list{background:rgba(90,190,120,.12);border:1px solid #5abe78;color:#5abe78;cursor:default}
+.card-name{font-size:9px;color:#444;margin-top:4px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.skel-row{display:flex;gap:10px;padding:0 16px 10px;overflow:hidden}
+.spinner-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:60px 0}
+.spinner{width:30px;height:30px;border:3px solid #1c1c2e;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+.spinner-label{font-size:12px;color:#444;letter-spacing:.5px}
+.search-wrap{padding:20px 16px 72px}
+.search-input-wrap{position:relative;margin-bottom:20px}
+.search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#444;pointer-events:none}
+.search-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 14px 13px 38px;color:#e8e0d4;font-size:14px;outline:none;transition:border-color .15s}
+.search-input:focus{border-color:#2a2a40}
+.search-loading{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--accent);font-size:11px}
+.search-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.no-results{text-align:center;color:#2a2a40;margin-top:48px;font-family:'Bebas Neue';font-size:20px;letter-spacing:1px}
+.list-wrap{padding:20px 16px 72px}
+.filter-bar{display:flex;gap:8px;margin-bottom:18px;align-items:center;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.filter-bar::-webkit-scrollbar{display:none}
+.sort-select{background:var(--surface);border:1px solid var(--border);color:#888;border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer;flex-shrink:0;margin-left:auto}
+.year-group{margin-bottom:32px}
+.year-label{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.year-num{font-family:'Bebas Neue';font-size:28px;color:var(--accent)}
+.year-line{flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
+.year-count{font-size:11px;color:#2a2a40}
+.list-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px}
+.list-card{position:relative;border-radius:7px;overflow:hidden;aspect-ratio:2/3;background:#12121e;cursor:pointer;transition:transform .25s cubic-bezier(.2,.8,.3,1),box-shadow .25s}
+.list-card:hover{transform:translateY(-4px) scale(1.03);box-shadow:0 16px 40px rgba(0,0,0,.7)}
+.list-card img{width:100%;height:100%;object-fit:cover}
+.list-card-grad{position:absolute;inset:0;background:linear-gradient(to top,rgba(5,5,14,.9),transparent);pointer-events:none}
+.list-card-status{position:absolute;bottom:4px;left:5px;font-size:9px}
+.list-card-stars{position:absolute;bottom:4px;right:5px;font-size:8px;color:#f5c518}
+.list-card-remove{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.7);border:none;color:#555;border-radius:50%;width:18px;height:18px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.list-card-name{font-size:9px;color:#444;margin-top:3px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.empty-list{text-align:center;padding:80px 0}
+.empty-icon{font-size:52px;margin-bottom:14px}
+.empty-title{font-family:'Bebas Neue';font-size:20px;letter-spacing:1px;color:#333}
+.empty-sub{font-size:12px;color:#2a2a3a;margin-top:6px}
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);backdrop-filter:blur(12px);z-index:999;align-items:flex-end;justify-content:center}
+.modal-backdrop.open{display:flex}
+.modal{background:#0e0e1c;border-radius:18px 18px 0 0;width:100%;max-width:640px;max-height:92vh;overflow-y:auto;border:1px solid #1e1e30;border-bottom:none}
+.modal-bg{height:200px;border-radius:18px 18px 0 0;overflow:hidden;background:#161624;position:relative;flex-shrink:0;background-size:cover;background-position:center}
+.modal-bg-grad{position:absolute;inset:0;background:linear-gradient(to top,#0e0e1c 0%,transparent 60%);border-radius:18px 18px 0 0}
+@media(min-width:640px){
+  .modal-backdrop{align-items:center}
+  .modal{border-radius:18px;border:1px solid #1e1e30;max-height:85vh}
+  .modal-bg{border-radius:18px 18px 0 0}
+  .modal-bg-grad{border-radius:18px 18px 0 0}
+}
+.modal-close{position:absolute;top:12px;right:12px;background:rgba(0,0,0,.6);border:none;color:#ccc;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-body{padding:0 18px 36px;margin-top:-52px;position:relative}
+.modal-row{display:flex;gap:14px;align-items:flex-end;margin-bottom:14px}
+.modal-poster{width:84px;height:126px;object-fit:cover;border-radius:8px;border:2px solid var(--border);flex-shrink:0}
+.modal-title{font-family:'Bebas Neue';font-size:26px;color:#fff;letter-spacing:.3px;line-height:1}
+.modal-orig{font-size:11px;color:#444;margin-top:3px;display:none}
+.modal-meta{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;align-items:center;font-size:12px}
+.modal-cta{width:100%;border:none;border-radius:8px;padding:10px 22px;font-weight:700;font-size:13px;cursor:pointer;background:var(--accent);color:var(--bg)}
+.status-btn{flex:1;background:transparent;border-radius:8px;padding:9px 14px;font-weight:700;font-size:13px;cursor:pointer;transition:all .15s}
+.priority-box{margin-top:14px;padding:14px;background:var(--surface);border-radius:10px;display:flex;align-items:center;border:1px solid #1e1e30}
+.puser-label{font-size:9px;color:#444;font-weight:700;letter-spacing:1.5px;margin-bottom:5px}
+.stars-row{display:flex;gap:2px}
+.star-btn{background:none;border:none;cursor:pointer;padding:0;font-size:18px;line-height:1;transition:color .12s,transform .12s}
+.divider{width:1px;height:36px;background:#1e1e30;margin:0 18px}
+.pct-box{margin-left:auto;text-align:center;display:none}
+.pct-label{font-size:9px;color:#444;margin-bottom:2px;letter-spacing:1px}
+.pct-val{font-family:'Bebas Neue';font-size:26px;color:#fff}
+.modal-overview{margin-top:14px;font-size:13px;color:#999;line-height:1.65}
+
+/* Profile selector */
+.profile-screen{position:fixed;inset:0;background:var(--bg);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;transition:opacity .3s ease,visibility .3s ease}
+.profile-screen.gone{opacity:0;visibility:hidden;pointer-events:none}
+.profile-title{font-family:'Bebas Neue';font-size:32px;letter-spacing:2px;color:#fff;margin-bottom:6px}
+.profile-sub{font-size:13px;color:#444;margin-bottom:48px;letter-spacing:.3px}
+.profile-cards{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+.profile-card{background:#111120;border:2px solid #1e1e30;border-radius:16px;padding:32px 28px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:12px;min-width:140px;-webkit-tap-highlight-color:transparent}
+.profile-card:hover,.profile-card:active{border-color:var(--accent);transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.6)}
+.profile-emoji{font-size:56px;line-height:1}
+.profile-name{font-family:'Bebas Neue';font-size:22px;letter-spacing:1px;color:#fff}
+
+/* Profile chip in nav */
+.profile-chip{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:3px 10px 3px 6px;cursor:pointer;transition:all .15s;flex-shrink:0}
+.profile-chip:hover{border-color:var(--accent)}
+.profile-chip-emoji{font-size:16px;line-height:1}
+.profile-chip-name{font-size:11px;font-weight:700;color:#888}
+
+/* In-list badge on feed cards */
+.card-inlist{position:absolute;top:6px;left:6px;background:rgba(90,190,120,.9);backdrop-filter:blur(4px);border-radius:4px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px}
+
+/* Streaming platforms */
+.streaming-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.streaming-chip{display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;color:#bbb;font-weight:600}
+.streaming-chip img{width:16px;height:16px;border-radius:3px;object-fit:cover}
+
+/* Genre filter in list */
+.genre-filter-bar{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:14px;padding-bottom:2px}
+.genre-filter-bar::-webkit-scrollbar{display:none}
+
+/* Swipe cards */
+.swipe-wrap{position:relative;overflow:hidden;border-radius:7px;touch-action:pan-y}
+.swipe-card{transition:transform .2s ease,opacity .2s ease}
+.swipe-hint-watch{position:absolute;inset:0;background:rgba(90,190,120,.85);display:flex;align-items:center;justify-content:center;font-size:24px;border-radius:7px;opacity:0;transition:opacity .15s;pointer-events:none}
+.swipe-hint-skip{position:absolute;inset:0;background:rgba(224,87,87,.85);display:flex;align-items:center;justify-content:center;font-size:24px;border-radius:7px;opacity:0;transition:opacity .15s;pointer-events:none}
+
+/* Scroll to top */
+.scroll-top{position:fixed;bottom:24px;right:20px;z-index:400;background:var(--accent);border:none;border-radius:50%;width:42px;height:42px;font-size:18px;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,.5);transition:all .2s;-webkit-tap-highlight-color:transparent}
+.scroll-top.visible{display:flex}
+.scroll-top:hover{background:#e0bc6a;transform:translateY(-2px)}
+</style>
+</head>
+<body>
+
+<!-- Profile selector -->
+<div class="profile-screen" id="profile-screen">
+  <div class="profile-title">GORDIMOVIES</div>
+  <div class="profile-sub">¿Quién está mirando?</div>
+  <div class="profile-cards">
+    <button class="profile-card" data-user="maty" onclick="selectProfile('maty')">
+      <div class="profile-emoji">🦕</div>
+      <div class="profile-name">Maty</div>
+    </button>
+    <button class="profile-card" data-user="valen" onclick="selectProfile('valen')">
+      <div class="profile-emoji">🍓</div>
+      <div class="profile-name">Valen</div>
+    </button>
+  </div>
+</div>
+
+<nav>
+  <div class="brand"><span>GORDI</span><span style="color:#fff">MOVIES</span><small>Maty &amp; Valen</small></div>
+  <button class="tab-btn active" data-tab="feed">🎬 Feed</button>
+  <button class="tab-btn" data-tab="search">🔍 Buscar</button>
+  <button class="tab-btn" id="mylist-tab" data-tab="mylist">🎞 Nuestra lista</button>
+  <div class="profile-chip" id="profile-chip" onclick="document.getElementById('profile-screen').classList.remove('gone')" style="margin-left:8px">
+    <span class="profile-chip-emoji" id="chip-emoji"></span>
+    <span class="profile-chip-name" id="chip-name"></span>
+  </div>
+</nav>
+
+<!-- Bottom nav (mobile) -->
+<div class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button class="bottom-tab active" data-tab="feed">
+      <span class="bottom-tab-icon">🎬</span>
+      <span class="bottom-tab-label">Feed</span>
+    </button>
+    <button class="bottom-tab" data-tab="search">
+      <span class="bottom-tab-icon">🔍</span>
+      <span class="bottom-tab-label">Buscar</span>
+    </button>
+    <button class="bottom-tab" id="mylist-bottom-tab" data-tab="mylist">
+      <span class="bottom-tab-icon">🎞</span>
+      <span class="bottom-tab-label">Nuestra lista</span>
+    </button>
+    <button class="bottom-tab" onclick="document.getElementById('profile-screen').classList.remove('gone')" id="profile-bottom-tab">
+      <span class="bottom-tab-icon" id="bottom-chip-emoji">👤</span>
+      <span class="bottom-tab-label" id="bottom-chip-name">Perfil</span>
+    </button>
+  </div>
+</div>
+
+<div id="view-feed" class="view active">
+  <div class="hero" id="hero">
+    <div class="hero-bg" id="hero-bg"></div>
+    <div class="hero-grad"></div><div class="hero-grad2"></div>
+    <div class="hero-content fu">
+      <div class="hero-label">★ Destacada esta semana</div>
+      <div class="hero-title" id="hero-title">Cargando…</div>
+      <div class="hero-meta" id="hero-meta"></div>
+      <div class="hero-overview" id="hero-overview"></div>
+      <button class="hero-btn" id="hero-btn">+ Añadir a nuestra lista</button>
+    </div>
+  </div>
+  <div class="genre-bar" id="genre-bar">
+    <button class="pill active" data-genre="0">Todo</button>
+    <button class="pill" data-genre="28">Acción</button>
+    <button class="pill" data-genre="35">Comedia</button>
+    <button class="pill" data-genre="18">Drama</button>
+    <button class="pill" data-genre="27">Terror</button>
+    <button class="pill" data-genre="878">Sci-Fi</button>
+    <button class="pill" data-genre="10749">Romance</button>
+    <button class="pill" data-genre="16">Animación</button>
+    <button class="pill" data-genre="53">Suspenso</button>
+    <button class="pill" data-genre="12">Aventura</button>
+  </div>
+  <div id="feed-rows"></div>
+</div>
+
+<div id="view-search" class="view">
+  <div class="search-wrap">
+    <div class="search-input-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" id="search-input" placeholder="Buscá cualquier película…">
+      <span class="search-loading" id="search-loading" style="display:none">buscando…</span>
+    </div>
+    <div class="search-grid" id="search-results"></div>
+    <div class="no-results" id="search-empty" style="display:none">Sin resultados</div>
+  </div>
+</div>
+
+<button class="scroll-top" id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<div id="view-mylist" class="view">
+  <div class="list-wrap">
+    <div class="filter-bar">
+      <button class="pill active" data-filter="all">Todo</button>
+      <button class="pill" data-filter="pending">🎬</button>
+      <button class="pill" data-filter="watched">✅</button>
+      <button class="pill" data-filter="skipped">✕</button>
+      <select class="sort-select" id="list-sort">
+        <option value="year">Por año</option>
+        <option value="priority">Por prioridad</option>
+        <option value="added">Recientes</option>
+      </select>
+    </div>
+    <div class="genre-filter-bar" id="genre-filter-bar">
+      <button class="pill active" data-gfilter="0">Todos los géneros</button>
+      <button class="pill" data-gfilter="28">Acción</button>
+      <button class="pill" data-gfilter="35">Comedia</button>
+      <button class="pill" data-gfilter="18">Drama</button>
+      <button class="pill" data-gfilter="27">Terror</button>
+      <button class="pill" data-gfilter="878">Sci-Fi</button>
+      <button class="pill" data-gfilter="10749">Romance</button>
+      <button class="pill" data-gfilter="16">Animación</button>
+      <button class="pill" data-gfilter="53">Suspenso</button>
+      <button class="pill" data-gfilter="12">Aventura</button>
+    </div>
+    <div id="list-content"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal">
+    <div class="modal-bg" id="modal-bg">
+      <div class="modal-bg-grad"></div>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-row">
+        <img class="modal-poster" id="modal-poster" src="" alt="">
+        <div>
+          <div class="modal-title" id="modal-title"></div>
+          <div class="modal-orig" id="modal-orig"></div>
+          <div class="modal-meta" id="modal-meta"></div>
+        </div>
+      </div>
+      <div id="modal-actions"></div>
+      <div class="streaming-row" id="modal-streaming"></div>
+      <div class="priority-box" id="modal-priority" style="display:none">
+        <div><div class="puser-label">MATY</div><div class="stars-row" id="stars-maty"></div></div>
+        <div class="divider"></div>
+        <div><div class="puser-label">VALEN</div><div class="stars-row" id="stars-valen"></div></div>
+        <div class="pct-box" id="pct-box"><div class="pct-label">GANAS</div><div class="pct-val" id="pct-val"></div></div>
+      </div>
+      <div class="modal-overview" id="modal-overview"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const KEY  = "67ecc6d2e2f83ce31c75bc966b423135";
+const BASE = "https://api.themoviedb.org/3";
+const IMG  = (p,s="w342") => p ? `https://image.tmdb.org/t/p/${s}${p}` : "";
+
+// ── Profiles ───────────────────────────────────────────────────────
+const PROFILES = {
+  maty:  { name:"Maty",  emoji:"🦕", color:"var(--accent)" },
+  valen: { name:"Valen", emoji:"🍓", color:"var(--accent2)" },
+};
+let currentUser = null;
+try { currentUser = localStorage.getItem("gordimovies-user"); } catch {}
+
+function applyTheme(user) {
+  document.documentElement.classList.remove("theme-maty","theme-valen");
+  if (user) document.documentElement.classList.add(`theme-${user}`);
+}
+
+function selectProfile(user) {
+  currentUser = user;
+  try { localStorage.setItem("gordimovies-user", user); } catch {}
+  applyTheme(user);
+  const screen = document.getElementById("profile-screen");
+  screen.classList.add("gone");
+  updateChip();
+  setTimeout(() => {
+    try { renderList(); } catch(e) {}
+    try { updateHeroBtn(); } catch(e) {}
+    try { refreshCards(); } catch(e) {}
+  }, 50);
+}
+
+function updateChip() {
+  if (!currentUser) return;
+  const p = PROFILES[currentUser];
+  document.getElementById("chip-emoji").textContent = p.emoji;
+  document.getElementById("chip-name").textContent  = p.name;
+  const be = document.getElementById("bottom-chip-emoji");
+  const bn = document.getElementById("bottom-chip-name");
+  if (be) be.textContent = p.emoji;
+  if (bn) bn.textContent = p.name;
+}
+
+// ── Streaming platforms ────────────────────────────────────────────
+const PROVIDER_LOGOS = {
+  8:   { name:"Netflix",      color:"#e50914" },
+  119: { name:"Amazon",       color:"#00a8e0" },
+  337: { name:"Disney+",      color:"#113ccf" },
+  384: { name:"HBO Max",      color:"#6c00ff" },
+  2:   { name:"Apple TV+",    color:"#555" },
+  283: { name:"Crunchyroll",  color:"#f47521" },
+  149: { name:"Mubi",         color:"#000" },
+};
+
+async function fetchStreaming(id) {
+  try {
+    const d = await tmdb(`/movie/${id}/watch/providers`);
+    const ar = d.results?.AR || d.results?.US || {};
+    const providers = ar.flatrate || ar.rent || ar.buy || [];
+    return providers.slice(0, 5);
+  } catch { return []; }
+}
+
+function renderStreaming(providers) {
+  const el = document.getElementById("modal-streaming");
+  if (!providers || providers.length === 0) { el.innerHTML = ""; return; }
+  el.innerHTML = providers.map(p => {
+    const logo = p.logo_path ? `<img src="https://image.tmdb.org/t/p/w45${p.logo_path}" alt="">` : "";
+    return `<div class="streaming-chip">${logo}${esc(p.provider_name)}</div>`;
+  }).join("");
+}
+
+// ── Genre filter for list ──────────────────────────────────────────
+let listGenreFilter = 0;
+
+// ── Scroll to top ──────────────────────────────────────────────────
+// (moved to DOMContentLoaded boot)
+
+// ── Swipe on list cards ────────────────────────────────────────────
+function addSwipe(el, id) {
+  let startX = 0, startY = 0, dragging = false;
+  const card   = el.querySelector(".swipe-card");
+  const watch  = el.querySelector(".swipe-hint-watch");
+  const skip   = el.querySelector(".swipe-hint-skip");
+  const THRESHOLD = 70;
+
+  el.addEventListener("touchstart", e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    dragging = false;
+  }, { passive: true });
+
+  el.addEventListener("touchmove", e => {
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (!dragging && Math.abs(dy) > Math.abs(dx)) return; // vertical scroll
+    dragging = true;
+    e.preventDefault();
+    card.style.transform = `translateX(${dx}px)`;
+    card.style.transition = "none";
+    const pct = Math.min(Math.abs(dx) / THRESHOLD, 1);
+    if (dx > 0) { watch.style.opacity = pct; skip.style.opacity = 0; }
+    else        { skip.style.opacity  = pct; watch.style.opacity = 0; }
+  }, { passive: false });
+
+  el.addEventListener("touchend", e => {
+    if (!dragging) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    card.style.transition = "";
+    watch.style.opacity = 0;
+    skip.style.opacity  = 0;
+    if (dx > THRESHOLD) {
+      // swipe right → mark watched
+      card.style.transform = `translateX(110%)`;
+      setTimeout(() => { updateItem(id, {[`status_${currentUser}`]: "watched"}); card.style.transform = ""; }, 300);
+    } else if (dx < -THRESHOLD) {
+      // swipe left → skip
+      card.style.transform = `translateX(-110%)`;
+      setTimeout(() => { updateItem(id, {[`status_${currentUser}`]: "skipped"}); card.style.transform = ""; }, 300);
+    } else {
+      card.style.transform = "";
+    }
+    dragging = false;
+  }, { passive: true });
+}
+// Shared list of movies — each item has status_maty, status_valen, pu_maty, pu_valen
+function loadList() {
+  try { return JSON.parse(localStorage.getItem("gordimovies-list") || "[]"); } catch { return []; }
+}
+function saveList() {
+  try { localStorage.setItem("gordimovies-list", JSON.stringify(watchlist)); } catch {}
+}
+
+let watchlist = loadList();
+
+function isInList(id) { return watchlist.some(m => m.id === id); }
+function getItem(id)  { return watchlist.find(m => m.id === id); }
+
+// Per-user getters
+function myStatus(item) { return item[`status_${currentUser}`] || "pending"; }
+function myStars(item)  { return item[`pu_${currentUser}`] || 0; }
+function otherUser()    { return currentUser === "maty" ? "valen" : "maty"; }
+function otherStars(item) { return item[`pu_${otherUser()}`] || 0; }
+
+// ── TMDB ───────────────────────────────────────────────────────────
+async function tmdb(path, params={}) {
+  const q = new URLSearchParams({ api_key:KEY, language:"es-AR", ...params });
+  const r = await fetch(`${BASE}${path}?${q}`);
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+
+function switchTab(tab) {
+  document.querySelectorAll(".tab-btn, .bottom-tab[data-tab]").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.querySelectorAll(`[data-tab="${tab}"]`).forEach(b => b.classList.add("active"));
+  document.getElementById("view-"+tab).classList.add("active");
+  window.scrollTo({top:0, behavior:"instant"});
+  if (tab === "mylist") renderList();
+}
+
+// ── Card HTML ──────────────────────────────────────────────────────
+const esc = s => (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+function cardInner(m) {
+  const inList = isInList(m.id);
+  const yr = (m.release_date||"").slice(0,4);
+  const sc = m.vote_average > 0 ? m.vote_average.toFixed(1) : "";
+  return `<div class="card" onclick="openModal(${m.id})">
+      ${m.poster_path
+        ? `<img src="${IMG(m.poster_path)}" alt="${esc(m.title)}" loading="lazy">`
+        : `<div class="card-placeholder">🎬</div>`}
+      ${sc?`<div class="card-score">★ ${sc}</div>`:""}
+      ${inList?`<div class="card-inlist">✓</div>`:""}
+      <div class="card-overlay">
+        <div class="card-overlay-title">${esc(m.title)}</div>
+        <div class="card-overlay-meta"><span>${yr}</span>${sc?`<span style="color:#f5c518;font-weight:700">★ ${sc}</span>`:""}</div>
+        <button class="add-btn ${inList?"in-list":""}" onclick="event.stopPropagation();addToList(${m.id})">${inList?"✓ Añadida":"+ Añadir"}</button>
+      </div>
+    </div>
+    <div class="card-name">${esc(m.title)}</div>`;
+}
+
+function cardHTML(m) {
+  return `<div class="card-wrap" data-id="${m.id}">${cardInner(m)}</div>`;
+}
+
+// skelGrid defined above with buildSection
+
+// Per-section pagination state
+const sectionState = {}; // id -> { all: [], page: 0 }
+const PAGE_SIZE = 20;
+
+function buildSection(id, label) {
+  return `<section class="section" id="sec-${id}">
+    <div class="section-head"><h2 class="section-title">${label}</h2><div class="section-line"></div></div>
+    <div id="row-${id}">${skelGrid()}</div>
+  </section>`;
+}
+
+function skelGrid(n=12) {
+  return `<div class="feed-grid">${Array(n).fill(0).map((_,i)=>
+    `<div class="skel" style="aspect-ratio:2/3;animation-delay:${i*60}ms"></div>`
+  ).join("")}</div>`;
+}
+
+function fillRow(id, movies) {
+  const el = document.getElementById("row-"+id);
+  if (!el) return;
+  if (!movies||movies.length===0) {
+    el.innerHTML=`<p style="color:#333;font-size:13px;padding:30px 16px">Sin resultados</p>`;
+    return;
+  }
+  sectionState[id] = { all: movies, page: 0 };
+  renderSectionPage(id);
+}
+
+function renderSectionPage(id) {
+  const state = sectionState[id];
+  if (!state) return;
+  const el = document.getElementById("row-"+id);
+  if (!el) return;
+  const { all, page } = state;
+  const shown = all.slice(0, (page+1)*PAGE_SIZE);
+  const hasMore = shown.length < all.length;
+  el.innerHTML =
+    `<div class="feed-grid">${shown.map((m,i)=>{
+      const delay = Math.max(0, i - page*PAGE_SIZE);
+      return `<div class="card-wrap fu" style="animation-delay:${delay*30}ms" data-id="${m.id}">${cardInner(m)}</div>`;
+    }).join("")}</div>` +
+    (hasMore
+      ? `<div class="load-more-wrap"><button class="load-more-btn" onclick="loadMoreSection('${id}')">Cargar más (${all.length - shown.length} restantes)</button></div>`
+      : "");
+}
+
+function loadMoreSection(id) {
+  if (!sectionState[id]) return;
+  // If we've shown all cached, try fetching next TMDB page
+  const state = sectionState[id];
+  const shown = (state.page+1)*PAGE_SIZE;
+  if (shown < state.all.length) {
+    state.page++;
+    renderSectionPage(id);
+  } else {
+    // fetch next TMDB page
+    fetchNextPage(id);
+  }
+}
+
+const sectionTmdbPage = {}; // id -> current TMDB page number
+const sectionTmdbPath = {}; // id -> {path, params}
+
+async function fetchNextPage(id) {
+  const info = sectionTmdbPath[id];
+  if (!info) return;
+  const nextPage = (sectionTmdbPage[id] || 1) + 1;
+  if (nextPage > 5) return; // max 100 results (5 pages × 20)
+  const el = document.getElementById("row-"+id);
+  const btn = el?.querySelector(".load-more-btn");
+  if (btn) { btn.textContent="Cargando…"; btn.disabled=true; }
+  try {
+    const d = await tmdb(info.path, {...info.params, page: nextPage});
+    const ms = (d.results||[]).filter(m=>m.poster_path);
+    ms.forEach(m=>movieCache[m.id]=m);
+    sectionTmdbPage[id] = nextPage;
+    sectionState[id].all = [...sectionState[id].all, ...ms];
+    sectionState[id].page++;
+    renderSectionPage(id);
+  } catch { if(btn){btn.textContent="Reintentar";btn.disabled=false;} }
+}
+
+// ── Feed ───────────────────────────────────────────────────────────
+let heroMovie = null;
+let currentGenre = 0;
+const genreCache = {};
+const movieCache = {};
+
+function initFeed() {
+  const rows = document.getElementById("feed-rows");
+  rows.innerHTML =
+    buildSection("trending","🔥 En tendencia") +
+    buildSection("popular","⭐ Más populares") +
+    buildSection("upcoming","🗓 Próximos estrenos") +
+    buildSection("toprated","🏆 Mejor puntuadas");
+
+  sectionTmdbPath["trending"] = {path:"/trending/movie/week", params:{}};
+  sectionTmdbPath["popular"]  = {path:"/movie/popular",       params:{}};
+  sectionTmdbPath["upcoming"] = {path:"/movie/upcoming",      params:{region:"AR"}};
+  sectionTmdbPath["toprated"] = {path:"/movie/top_rated",     params:{}};
+
+  tmdb("/trending/movie/week").then(d => {
+    const ms = (d.results||[]).filter(m=>m.poster_path);
+    ms.forEach(m=>movieCache[m.id]=m);
+    fillRow("trending", ms);
+    if (ms[0] && !heroMovie) setHero(ms[0]);
+  }).catch(()=>fillRow("trending",[]));
+
+  tmdb("/movie/popular").then(d => {
+    const ms=(d.results||[]).filter(m=>m.poster_path);
+    ms.forEach(m=>movieCache[m.id]=m);
+    fillRow("popular",ms);
+  }).catch(()=>fillRow("popular",[]));
+
+  tmdb("/movie/upcoming",{region:"AR"}).then(d => {
+    const ms=(d.results||[]).filter(m=>m.poster_path);
+    ms.forEach(m=>movieCache[m.id]=m);
+    fillRow("upcoming",ms);
+  }).catch(()=>fillRow("upcoming",[]));
+
+  tmdb("/movie/top_rated").then(d => {
+    const ms=(d.results||[]).filter(m=>m.poster_path);
+    ms.forEach(m=>movieCache[m.id]=m);
+    fillRow("toprated",ms);
+  }).catch(()=>fillRow("toprated",[]));
+}
+
+function setHero(m) {
+  heroMovie = m;
+  if (m.backdrop_path) document.getElementById("hero-bg").style.backgroundImage=`url(https://image.tmdb.org/t/p/w1280${m.backdrop_path})`;
+  document.getElementById("hero-title").textContent = m.title;
+  const yr = (m.release_date||"").slice(0,4);
+  const sc = m.vote_average>0 ? m.vote_average.toFixed(1) : "";
+  document.getElementById("hero-meta").innerHTML =
+    `${yr?`<span style="color:#bbb">${yr}</span>`:""}${sc?`<span style="color:#f5c518;font-weight:700">★ ${sc}/10</span>`:""}`;
+  document.getElementById("hero-overview").textContent = m.overview||"";
+  document.getElementById("hero").onclick = ()=>openModal(m.id);
+  updateHeroBtn();
+}
+
+function updateHeroBtn() {
+  if (!heroMovie) return;
+  const btn = document.getElementById("hero-btn");
+  const inList = isInList(heroMovie.id);
+  btn.textContent = inList ? "✓ En nuestra lista" : "+ Añadir a nuestra lista";
+  btn.className = "hero-btn"+(inList?" in-list":"");
+  btn.onclick = inList ? null : e=>{e.stopPropagation();addToList(heroMovie.id);updateHeroBtn();};
+}
+
+// ── Genre pills ────────────────────────────────────────────────────
+document.getElementById("genre-bar").addEventListener("click", e => {
+  const btn = e.target.closest(".pill");
+  if (!btn) return;
+  document.querySelectorAll("#genre-bar .pill").forEach(p=>p.classList.remove("active"));
+  btn.classList.add("active");
+  const g = parseInt(btn.dataset.genre);
+  currentGenre = g;
+  const rows = document.getElementById("feed-rows");
+  if (g===0) { initFeed(); return; }
+  rows.innerHTML = buildSection("genre", btn.textContent);
+  sectionTmdbPath["genre"] = {path:"/discover/movie", params:{with_genres:g, sort_by:"popularity.desc"}};
+  if (genreCache[g]) { fillRow("genre",genreCache[g]); return; }
+  tmdb("/discover/movie",{with_genres:g,sort_by:"popularity.desc"}).then(d=>{
+    const ms=(d.results||[]).filter(m=>m.poster_path);
+    ms.forEach(m=>movieCache[m.id]=m);
+    genreCache[g]=ms;
+    fillRow("genre",ms);
+  }).catch(()=>fillRow("genre",[]));
+});
+
+// ── Add / remove ───────────────────────────────────────────────────
+async function addToList(id) {
+  if (isInList(id)) return;
+  let m = movieCache[id];
+  if (!m) { try { m=await tmdb(`/movie/${id}`); movieCache[id]=m; } catch{return;} }
+  watchlist.push({
+    ...m,
+    status_maty:"pending", status_valen:"pending",
+    pu_maty:0, pu_valen:0,
+    ts:Date.now()
+  });
+  saveList(); updateListCount(); refreshCards(); updateHeroBtn();
+  if (currentModal===id) renderModal(id);
+}
+
+async function removeFromList(id) {
+  watchlist = watchlist.filter(m=>m.id!==id);
+  saveList(); updateListCount(); renderList(); refreshCards();
+}
+
+function updateListCount() {
+  const n = watchlist.length;
+  document.getElementById("mylist-tab").textContent = `🎞 Nuestra lista${n?" · "+n:""}`;
+}
+
+function refreshCards() {
+  document.querySelectorAll(".card-wrap[data-id]").forEach(el=>{
+    const id=parseInt(el.dataset.id);
+    el.innerHTML = cardInner(movieCache[id] || watchlist.find(m=>m.id===id) || {id});
+  });
+}
+
+// ── Search ─────────────────────────────────────────────────────────
+let searchTimer;
+document.getElementById("search-input").addEventListener("input", e=>{
+  clearTimeout(searchTimer);
+  const v=e.target.value.trim();
+  if (!v){document.getElementById("search-results").innerHTML="";document.getElementById("search-empty").style.display="none";return;}
+  document.getElementById("search-loading").style.display="inline";
+  searchTimer=setTimeout(async()=>{
+    try{
+      const d=await tmdb("/search/movie",{query:v,include_adult:false});
+      const ms=(d.results||[]).filter(m=>m.poster_path).slice(0,20);
+      ms.forEach(m=>movieCache[m.id]=m);
+      document.getElementById("search-results").innerHTML=ms.map(m=>cardHTML(m)).join("");
+      document.getElementById("search-empty").style.display=ms.length===0?"block":"none";
+    }catch{}
+    document.getElementById("search-loading").style.display="none";
+  },400);
+});
+
+// ── My List ────────────────────────────────────────────────────────
+let listFilter="all";
+const S_COLOR={pending:"var(--accent)",watched:"#5abe78",skipped:"#e05757"};
+const S_EMOJI={pending:"🎬",watched:"✅",skipped:"✕"};
+const S_LABEL={pending:"🎬 Pendiente",watched:"✅ Vista",skipped:"✕ Descartada"};
+
+document.querySelector(".filter-bar").addEventListener("click",e=>{
+  const btn=e.target.closest(".pill");
+  if(!btn)return;
+  document.querySelectorAll(".filter-bar .pill").forEach(p=>p.classList.remove("active"));
+  btn.classList.add("active");
+  listFilter=btn.dataset.filter;
+  renderList();
+});
+document.getElementById("list-sort").addEventListener("change",renderList);
+
+function renderList() {
+  const sort=document.getElementById("list-sort").value;
+  const content=document.getElementById("list-content");
+  let items=watchlist.filter(m=>listFilter==="all"||myStatus(m)===listFilter);
+
+  if(listGenreFilter!==0) items=items.filter(m=>(m.genre_ids||[]).includes(listGenreFilter));
+
+  if(sort==="priority") items=[...items].sort((a,b)=>((b.pu_maty||0)+(b.pu_valen||0))-((a.pu_maty||0)+(a.pu_valen||0)));
+  else if(sort==="added") items=[...items].sort((a,b)=>b.ts-a.ts);
+  else items=[...items].sort((a,b)=>(b.release_date||"").localeCompare(a.release_date||""));
+
+  const counts={all:watchlist.length,pending:watchlist.filter(m=>myStatus(m)==="pending").length,watched:watchlist.filter(m=>myStatus(m)==="watched").length,skipped:watchlist.filter(m=>myStatus(m)==="skipped").length};
+  document.querySelectorAll(".filter-bar .pill").forEach(p=>{
+    if(p.dataset.filter==="all") p.textContent=`Todo · ${counts.all}`;
+  });
+
+  if(items.length===0){
+    content.innerHTML=`<div class="empty-list"><div class="empty-icon">🎞</div><div class="empty-title">${watchlist.length===0?"Nuestra lista está vacía":"Sin resultados"}</div>${watchlist.length===0?`<div class="empty-sub">Explorá el feed y añadí películas</div>`:""}</div>`;
+    return;
+  }
+
+  if(sort!=="year"){
+    content.innerHTML=`<div class="list-grid">${items.map(m=>listCardHTML(m)).join("")}</div>`;
+  } else {
+    const byYear={};
+    items.forEach(m=>{const y=(m.release_date||"").slice(0,4)||"Sin fecha";(byYear[y]||(byYear[y]=[])).push(m);});
+    const groups=Object.entries(byYear).sort(([a],[b])=>a==="Sin fecha"?1:b==="Sin fecha"?-1:parseInt(b)-parseInt(a));
+    content.innerHTML=groups.map(([yr,movies])=>`
+      <div class="year-group">
+        <div class="year-label"><span class="year-num">${yr}</span><div class="year-line"></div><span class="year-count">${movies.length}</span></div>
+        <div class="list-grid">${movies.map(m=>listCardHTML(m)).join("")}</div>
+      </div>`).join("");
+  }
+
+  items.forEach(m=>{const el=document.getElementById(`swipe-${m.id}`);if(el)addSwipe(el,m.id);});
+}
+
+function listCardHTML(m) {
+  const st = myStatus(m);
+  const stars = myStars(m) + otherStars(m);
+  return `<div>
+    <div class="swipe-wrap" id="swipe-${m.id}">
+      <div class="swipe-hint-watch">✅</div>
+      <div class="swipe-hint-skip">✕</div>
+      <div class="swipe-card list-card" data-id="${m.id}" onclick="openModal(${m.id})" style="border:1px solid ${S_COLOR[st]}28">
+        ${m.poster_path?`<img src="${IMG(m.poster_path)}" alt="${esc(m.title)}" loading="lazy">`:`<div class="card-placeholder" style="height:100%;background:#12121e">🎬</div>`}
+        <div class="list-card-grad"></div>
+        <div class="list-card-status" style="color:${S_COLOR[st]}">${S_EMOJI[st]}</div>
+        ${stars>0?`<div class="list-card-stars">${"★".repeat(Math.min(stars,6))}</div>`:""}
+        <button class="list-card-remove" onclick="event.stopPropagation();removeFromList(${m.id})">✕</button>
+      </div>
+    </div>
+    <div class="list-card-name">${esc(m.title)}</div>
+  </div>`;
+}
+
+// ── Modal ──────────────────────────────────────────────────────────
+let currentModal=null;
+
+async function openModal(id) {
+  currentModal=id;
+  let m=movieCache[id]||watchlist.find(x=>x.id===id);
+  if(!m){try{m=await tmdb(`/movie/${id}`);movieCache[id]=m;}catch{return;}}
+  else movieCache[id]=m;
+  renderModal(id);
+  document.getElementById("modal-backdrop").classList.add("open");
+  // Fetch streaming async
+  document.getElementById("modal-streaming").innerHTML = `<div style="font-size:11px;color:#444">Buscando plataformas…</div>`;
+  fetchStreaming(id).then(providers => renderStreaming(providers));
+}
+
+function renderModal(id) {
+  const m=movieCache[id]; if(!m)return;
+  const item=getItem(id);
+  const yr=(m.release_date||"").slice(0,4);
+  const sc=m.vote_average>0?m.vote_average.toFixed(1):null;
+
+  const mbg=document.getElementById("modal-bg");
+  mbg.style.backgroundImage=m.backdrop_path?`url(https://image.tmdb.org/t/p/w1280${m.backdrop_path})`:"none";
+
+  const poster=document.getElementById("modal-poster");
+  if(m.poster_path){poster.src=IMG(m.poster_path,"w342");poster.style.display="block";}else poster.style.display="none";
+
+  document.getElementById("modal-title").textContent=m.title;
+  const orig=document.getElementById("modal-orig");
+  if(m.original_title&&m.original_title!==m.title){orig.textContent=m.original_title;orig.style.display="block";}else orig.style.display="none";
+  document.getElementById("modal-meta").innerHTML=
+    `${yr?`<span style="color:#888">${yr}</span>`:""}${sc?`<span style="color:#f5c518;font-weight:700">★ ${sc}</span>`:""}${m.vote_count?`<span style="color:#444">${m.vote_count.toLocaleString()} votos</span>`:""}`;
+
+  const actions=document.getElementById("modal-actions");
+  if(!item){
+    actions.innerHTML=`<button class="modal-cta" onclick="addToList(${id})">+ Añadir a nuestra lista</button>`;
+  } else {
+    const st = myStatus(item);
+    actions.innerHTML=`<div style="display:flex;gap:8px"><button class="status-btn" style="border:1px solid ${S_COLOR[st]};color:${S_COLOR[st]}" onclick="cycleStatus(${id})">${S_LABEL[st]}</button></div>`;
+  }
+
+  const pbox=document.getElementById("modal-priority");
+  if(item){
+    pbox.style.display="flex";
+    const me    = PROFILES[currentUser];
+    const other = PROFILES[otherUser()];
+    const css   = getComputedStyle(document.documentElement);
+    const meColor    = css.getPropertyValue("--accent").trim();
+    const otherColor = css.getPropertyValue("--accent2").trim();
+    document.getElementById("stars-maty").previousElementSibling.textContent  = `${me.emoji} ${me.name.toUpperCase()}`;
+    document.getElementById("stars-valen").previousElementSibling.textContent = `${other.emoji} ${other.name.toUpperCase()}`;
+    renderStars("stars-maty",  myStars(item),    meColor,    v=>updateItem(id,{[`pu_${currentUser}`]:v}));
+    renderStars("stars-valen", otherStars(item), otherColor, v=>updateItem(id,{[`pu_${otherUser()}`]:v}));
+    updatePct(item);
+  } else pbox.style.display="none";
+
+  document.getElementById("modal-overview").textContent=m.overview||"";
+}
+
+function renderStars(elId,val,color,onChange) {
+  const el=document.getElementById(elId); el.innerHTML="";
+  for(let i=1;i<=3;i++){
+    const btn=document.createElement("button");
+    btn.className="star-btn";btn.textContent="★";
+    btn.style.color=i<=val?color:"#1e1e2e";
+    btn.style.transform=i<=val?"scale(1.15)":"scale(1)";
+    btn.onclick=e=>{e.stopPropagation();onChange(val===i?0:i);};
+    el.appendChild(btn);
+  }
+}
+
+function updatePct(item) {
+  const total = myStars(item) + otherStars(item);
+  const pct=document.getElementById("pct-box");
+  if(total>0){pct.style.display="block";document.getElementById("pct-val").textContent=Math.round(total/6*100)+"%";}
+  else pct.style.display="none";
+}
+
+function cycleStatus(id) {
+  const item=getItem(id); if(!item)return;
+  const order=["pending","watched","skipped"];
+  const cur = myStatus(item);
+  updateItem(id,{[`status_${currentUser}`]: order[(order.indexOf(cur)+1)%3]});
+}
+
+function updateItem(id,updates) {
+  const idx=watchlist.findIndex(m=>m.id===id);
+  if(idx===-1){setTimeout(()=>updateItem(id,updates),50);return;}
+  watchlist[idx]={...watchlist[idx],...updates};
+  saveList(); renderModal(id); renderList();
+}
+
+document.getElementById("modal-close").onclick=()=>{document.getElementById("modal-backdrop").classList.remove("open");currentModal=null;};
+document.getElementById("modal-backdrop").onclick=e=>{if(e.target.id==="modal-backdrop"){document.getElementById("modal-backdrop").classList.remove("open");currentModal=null;}};
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){document.getElementById("modal-backdrop").classList.remove("open");currentModal=null;}});
+
+// ── Boot ───────────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+
+  // Tab buttons (top + bottom)
+  document.querySelectorAll(".tab-btn[data-tab], .bottom-tab[data-tab]").forEach(btn => {
+    btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+  });
+
+  // Profile touch listeners
+  document.querySelectorAll(".profile-card").forEach(btn => {
+    btn.addEventListener("touchend", function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      selectProfile(this.getAttribute("data-user"));
+    });
+    btn.addEventListener("click", function(e) {
+      selectProfile(this.getAttribute("data-user"));
+    });
+  });
+
+  // Genre filter in list
+  document.getElementById("genre-filter-bar").addEventListener("click", e => {
+    const btn = e.target.closest(".pill");
+    if (!btn || !btn.dataset.gfilter) return;
+    document.querySelectorAll("#genre-filter-bar .pill").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    listGenreFilter = parseInt(btn.dataset.gfilter);
+    renderList();
+  });
+
+  // Scroll to top
+  window.addEventListener("scroll", () => {
+    const btn = document.getElementById("scroll-top");
+    if (!btn) return;
+    if (window.scrollY > 400) btn.classList.add("visible");
+    else btn.classList.remove("visible");
+  }, { passive: true });
+
+  if (currentUser) {
+    document.getElementById("profile-screen").classList.add("gone");
+    applyTheme(currentUser);
+    updateChip();
+  }
+  updateListCount();
+  initFeed();
+});
+</script>
+</body>
+</html>
