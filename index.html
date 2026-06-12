@@ -177,6 +177,17 @@ nav{position:sticky;top:0;z-index:500;background:rgba(8,8,16,.94);backdrop-filte
 .pct-val{font-family:'Bebas Neue';font-size:26px;color:#fff}
 .modal-overview{margin-top:14px;font-size:13px;color:#999;line-height:1.65}
 
+/* Cast row */
+.cast-section{margin-top:16px}
+.cast-title{font-size:10px;font-weight:700;color:#444;letter-spacing:1.5px;margin-bottom:10px}
+.cast-row{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
+.cast-row::-webkit-scrollbar{display:none}
+.cast-member{flex-shrink:0;text-align:center;width:60px}
+.cast-photo{width:52px;height:52px;border-radius:50%;object-fit:cover;background:var(--surface);border:2px solid var(--border);display:block;margin:0 auto 5px}
+.cast-photo-placeholder{width:52px;height:52px;border-radius:50%;background:var(--surface);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;margin:0 auto 5px}
+.cast-name{font-size:9px;color:#bbb;line-height:1.3;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cast-char{font-size:8px;color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
 /* Profile selector */
 .profile-screen{position:fixed;inset:0;background:var(--bg);z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;transition:opacity .3s ease,visibility .3s ease}
 .profile-screen.gone{opacity:0;visibility:hidden;pointer-events:none}
@@ -303,6 +314,12 @@ nav{position:sticky;top:0;z-index:500;background:rgba(8,8,16,.94);backdrop-filte
       <input type="text" class="search-input" id="search-input" placeholder="Buscá cualquier película…">
       <span class="search-loading" id="search-loading" style="display:none">buscando…</span>
     </div>
+    <div id="search-header" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <h2 style="font-family:'Bebas Neue';font-size:18px;color:#fff;letter-spacing:.5px;white-space:nowrap">🍿 Populares ahora</h2>
+        <div style="flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)"></div>
+      </div>
+    </div>
     <div class="search-grid" id="search-results"></div>
     <div class="no-results" id="search-empty" style="display:none">Sin resultados</div>
   </div>
@@ -363,11 +380,12 @@ nav{position:sticky;top:0;z-index:500;background:rgba(8,8,16,.94);backdrop-filte
         <div class="pct-box" id="pct-box"><div class="pct-label">GANAS</div><div class="pct-val" id="pct-val"></div></div>
       </div>
       <div class="modal-overview" id="modal-overview"></div>
+      <div class="cast-section" id="modal-cast"></div>
     </div>
   </div>
 </div>
 
-<script>
+<script type="module">
 const KEY  = "67ecc6d2e2f83ce31c75bc966b423135";
 const BASE = "https://api.themoviedb.org/3";
 const IMG  = (p,s="w342") => p ? `https://image.tmdb.org/t/p/${s}${p}` : "";
@@ -492,15 +510,67 @@ function addSwipe(el, id) {
     dragging = false;
   }, { passive: true });
 }
-// Shared list of movies — each item has status_maty, status_valen, pu_maty, pu_valen
-function loadList() {
-  try { return JSON.parse(localStorage.getItem("gordimovies-list") || "[]"); } catch { return []; }
-}
-function saveList() {
-  try { localStorage.setItem("gordimovies-list", JSON.stringify(watchlist)); } catch {}
+// ── Firebase ───────────────────────────────────────────────────────
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDc0v4nsW2ns3YeOWQVcmUje1tKSCsxiws",
+  authDomain: "gordimovies.firebaseapp.com",
+  projectId: "gordimovies",
+  storageBucket: "gordimovies.firebasestorage.app",
+  messagingSenderId: "655436442571",
+  appId: "1:655436442571:web:c7ef5cb0960f34d76e244e"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db    = getFirestore(fbApp);
+const LIST_DOC = doc(db, "gordimovies", "watchlist");
+
+// Save to Firestore
+async function saveList() {
+  try {
+    await setDoc(LIST_DOC, { movies: watchlist });
+  } catch(e) {
+    // Fallback to localStorage
+    try { localStorage.setItem("gordimovies-list", JSON.stringify(watchlist)); } catch {}
+  }
 }
 
-let watchlist = loadList();
+// Load once then listen for real-time updates
+async function initFirebase() {
+  try {
+    const snap = await getDoc(LIST_DOC);
+    if (snap.exists()) {
+      watchlist = snap.data().movies || [];
+    } else {
+      // Migrate from localStorage if exists
+      try {
+        const local = JSON.parse(localStorage.getItem("gordimovies-list") || "[]");
+        if (local.length > 0) { watchlist = local; await saveList(); }
+      } catch {}
+    }
+    // Real-time listener — updates UI when other device makes changes
+    onSnapshot(LIST_DOC, (snap) => {
+      if (!snap.exists()) return;
+      const incoming = snap.data().movies || [];
+      // Only update if different to avoid loops
+      if (JSON.stringify(incoming) !== JSON.stringify(watchlist)) {
+        watchlist = incoming;
+        updateListCount();
+        renderList();
+        refreshCards();
+        updateHeroBtn();
+      }
+    });
+  } catch(e) {
+    // Offline fallback
+    try { watchlist = JSON.parse(localStorage.getItem("gordimovies-list") || "[]"); } catch {}
+  }
+}
+
+// Shared list of movies — each item has status_maty, status_valen, pu_maty, pu_valen
+let watchlist = [];
 
 function isInList(id) { return watchlist.some(m => m.id === id); }
 function getItem(id)  { return watchlist.find(m => m.id === id); }
@@ -526,6 +596,8 @@ function switchTab(tab) {
   document.getElementById("view-"+tab).classList.add("active");
   window.scrollTo({top:0, behavior:"instant"});
   if (tab === "mylist") renderList();
+  if (tab === "search" && searchSuggestions.length === 0) initSearchSuggestions();
+  else if (tab === "search" && !document.getElementById("search-input").value) showSuggestions();
 }
 
 // ── Card HTML ──────────────────────────────────────────────────────
@@ -760,10 +832,30 @@ function refreshCards() {
 
 // ── Search ─────────────────────────────────────────────────────────
 let searchTimer;
+let searchSuggestions = []; // popular movies cached for suggestions
+
+async function initSearchSuggestions() {
+  try {
+    const d = await tmdb("/movie/popular");
+    searchSuggestions = (d.results||[]).filter(m=>m.poster_path).slice(0,20);
+    searchSuggestions.forEach(m=>movieCache[m.id]=m);
+    // Show suggestions if search tab is active and input is empty
+    const input = document.getElementById("search-input");
+    if (!input.value.trim()) showSuggestions();
+  } catch {}
+}
+
+function showSuggestions() {
+  document.getElementById("search-header").style.display = "block";
+  document.getElementById("search-results").innerHTML = searchSuggestions.map(m=>cardHTML(m)).join("");
+  document.getElementById("search-empty").style.display = "none";
+}
+
 document.getElementById("search-input").addEventListener("input", e=>{
   clearTimeout(searchTimer);
   const v=e.target.value.trim();
-  if (!v){document.getElementById("search-results").innerHTML="";document.getElementById("search-empty").style.display="none";return;}
+  if (!v) { showSuggestions(); document.getElementById("search-loading").style.display="none"; return; }
+  document.getElementById("search-header").style.display = "none";
   document.getElementById("search-loading").style.display="inline";
   searchTimer=setTimeout(async()=>{
     try{
@@ -776,6 +868,30 @@ document.getElementById("search-input").addEventListener("input", e=>{
     document.getElementById("search-loading").style.display="none";
   },400);
 });
+
+// ── Cast ───────────────────────────────────────────────────────────
+async function fetchCast(id) {
+  try {
+    const d = await tmdb(`/movie/${id}/credits`);
+    return (d.cast||[]).slice(0,10);
+  } catch { return []; }
+}
+
+function renderCast(cast) {
+  const el = document.getElementById("modal-cast");
+  if (!cast||cast.length===0) { el.innerHTML=""; return; }
+  el.innerHTML = `
+    <div class="cast-title">REPARTO</div>
+    <div class="cast-row">${cast.map(p=>`
+      <div class="cast-member">
+        ${p.profile_path
+          ? `<img class="cast-photo" src="https://image.tmdb.org/t/p/w185${p.profile_path}" alt="${esc(p.name)}" loading="lazy">`
+          : `<div class="cast-photo-placeholder">👤</div>`}
+        <div class="cast-name">${esc(p.name)}</div>
+        <div class="cast-char">${esc(p.character||"")}</div>
+      </div>`).join("")}
+    </div>`;
+}
 
 // ── My List ────────────────────────────────────────────────────────
 let listFilter="all";
@@ -859,9 +975,13 @@ async function openModal(id) {
   else movieCache[id]=m;
   renderModal(id);
   document.getElementById("modal-backdrop").classList.add("open");
-  // Fetch streaming async
+  // Fetch streaming and cast in parallel
   document.getElementById("modal-streaming").innerHTML = `<div style="font-size:11px;color:#444">Buscando plataformas…</div>`;
-  fetchStreaming(id).then(providers => renderStreaming(providers));
+  document.getElementById("modal-cast").innerHTML = `<div style="font-size:11px;color:#444;margin-top:16px">Cargando reparto…</div>`;
+  Promise.all([fetchStreaming(id), fetchCast(id)]).then(([providers, cast]) => {
+    renderStreaming(providers);
+    renderCast(cast);
+  });
 }
 
 function renderModal(id) {
@@ -946,7 +1066,7 @@ document.getElementById("modal-backdrop").onclick=e=>{if(e.target.id==="modal-ba
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){document.getElementById("modal-backdrop").classList.remove("open");currentModal=null;}});
 
 // ── Boot ───────────────────────────────────────────────────────────
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
 
   // Tab buttons (top + bottom)
   document.querySelectorAll(".tab-btn[data-tab], .bottom-tab[data-tab]").forEach(btn => {
@@ -988,6 +1108,8 @@ document.addEventListener("DOMContentLoaded", () => {
     applyTheme(currentUser);
     updateChip();
   }
+  // Init Firebase then start app
+  await initFirebase();
   updateListCount();
   initFeed();
 });
