@@ -236,11 +236,11 @@ nav{position:sticky;top:0;z-index:500;background:rgba(8,8,16,.94);backdrop-filte
   <div class="profile-title">GORDIMOVIES</div>
   <div class="profile-sub">¿Quién está mirando?</div>
   <div class="profile-cards">
-    <button class="profile-card" data-user="maty" onclick="selectProfile('maty')">
+    <button class="profile-card" data-user="maty">
       <div class="profile-emoji">🦕</div>
       <div class="profile-name">Maty</div>
     </button>
-    <button class="profile-card" data-user="valen" onclick="selectProfile('valen')">
+    <button class="profile-card" data-user="valen">
       <div class="profile-emoji">🍓</div>
       <div class="profile-name">Valen</div>
     </button>
@@ -252,7 +252,7 @@ nav{position:sticky;top:0;z-index:500;background:rgba(8,8,16,.94);backdrop-filte
   <button class="tab-btn active" data-tab="feed">🎬 Feed</button>
   <button class="tab-btn" data-tab="search">🔍 Buscar</button>
   <button class="tab-btn" id="mylist-tab" data-tab="mylist">🎞 Nuestra lista</button>
-  <div class="profile-chip" id="profile-chip" onclick="document.getElementById('profile-screen').classList.remove('gone')" style="margin-left:8px">
+  <div class="profile-chip" id="profile-chip" style="margin-left:8px">
     <span class="profile-chip-emoji" id="chip-emoji"></span>
     <span class="profile-chip-name" id="chip-name"></span>
   </div>
@@ -273,7 +273,7 @@ nav{position:sticky;top:0;z-index:500;background:rgba(8,8,16,.94);backdrop-filte
       <span class="bottom-tab-icon">🎞</span>
       <span class="bottom-tab-label">Nuestra lista</span>
     </button>
-    <button class="bottom-tab" onclick="document.getElementById('profile-screen').classList.remove('gone')" id="profile-bottom-tab">
+    <button class="bottom-tab" id="profile-bottom-tab">
       <span class="bottom-tab-icon" id="bottom-chip-emoji">👤</span>
       <span class="bottom-tab-label" id="bottom-chip-name">Perfil</span>
     </button>
@@ -325,7 +325,7 @@ nav{position:sticky;top:0;z-index:500;background:rgba(8,8,16,.94);backdrop-filte
   </div>
 </div>
 
-<button class="scroll-top" id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+<button class="scroll-top" id="scroll-top">↑</button>
 
 <div id="view-mylist" class="view">
   <div class="list-wrap">
@@ -777,26 +777,7 @@ function updateHeroBtn() {
   btn.onclick = inList ? null : e=>{e.stopPropagation();addToList(heroMovie.id);updateHeroBtn();};
 }
 
-// ── Genre pills ────────────────────────────────────────────────────
-document.getElementById("genre-bar").addEventListener("click", e => {
-  const btn = e.target.closest(".pill");
-  if (!btn) return;
-  document.querySelectorAll("#genre-bar .pill").forEach(p=>p.classList.remove("active"));
-  btn.classList.add("active");
-  const g = parseInt(btn.dataset.genre);
-  currentGenre = g;
-  const rows = document.getElementById("feed-rows");
-  if (g===0) { initFeed(); return; }
-  rows.innerHTML = buildSection("genre", btn.textContent);
-  sectionTmdbPath["genre"] = {path:"/discover/movie", params:{with_genres:g, sort_by:"popularity.desc"}};
-  if (genreCache[g]) { fillRow("genre",genreCache[g]); return; }
-  tmdb("/discover/movie",{with_genres:g,sort_by:"popularity.desc"}).then(d=>{
-    const ms=(d.results||[]).filter(m=>m.poster_path);
-    ms.forEach(m=>movieCache[m.id]=m);
-    genreCache[g]=ms;
-    fillRow("genre",ms);
-  }).catch(()=>fillRow("genre",[]));
-});
+// ── Genre pills — moved to DOMContentLoaded ────────────────────────
 
 // ── Add / remove ───────────────────────────────────────────────────
 async function addToList(id) {
@@ -851,23 +832,7 @@ function showSuggestions() {
   document.getElementById("search-empty").style.display = "none";
 }
 
-document.getElementById("search-input").addEventListener("input", e=>{
-  clearTimeout(searchTimer);
-  const v=e.target.value.trim();
-  if (!v) { showSuggestions(); document.getElementById("search-loading").style.display="none"; return; }
-  document.getElementById("search-header").style.display = "none";
-  document.getElementById("search-loading").style.display="inline";
-  searchTimer=setTimeout(async()=>{
-    try{
-      const d=await tmdb("/search/movie",{query:v,include_adult:false});
-      const ms=(d.results||[]).filter(m=>m.poster_path).slice(0,20);
-      ms.forEach(m=>movieCache[m.id]=m);
-      document.getElementById("search-results").innerHTML=ms.map(m=>cardHTML(m)).join("");
-      document.getElementById("search-empty").style.display=ms.length===0?"block":"none";
-    }catch{}
-    document.getElementById("search-loading").style.display="none";
-  },400);
-});
+// search input listener moved to DOMContentLoaded
 
 // ── Cast ───────────────────────────────────────────────────────────
 async function fetchCast(id) {
@@ -898,16 +863,7 @@ let listFilter="all";
 const S_COLOR={pending:"var(--accent)",watched:"#5abe78",skipped:"#e05757"};
 const S_EMOJI={pending:"🎬",watched:"✅",skipped:"✕"};
 const S_LABEL={pending:"🎬 Pendiente",watched:"✅ Vista",skipped:"✕ Descartada"};
-
-document.querySelector(".filter-bar").addEventListener("click",e=>{
-  const btn=e.target.closest(".pill");
-  if(!btn)return;
-  document.querySelectorAll(".filter-bar .pill").forEach(p=>p.classList.remove("active"));
-  btn.classList.add("active");
-  listFilter=btn.dataset.filter;
-  renderList();
-});
-document.getElementById("list-sort").addEventListener("change",renderList);
+// listeners moved to DOMContentLoaded
 
 function renderList() {
   const sort=document.getElementById("list-sort").value;
@@ -1061,9 +1017,7 @@ function updateItem(id,updates) {
   saveList(); renderModal(id); renderList();
 }
 
-document.getElementById("modal-close").onclick=()=>{document.getElementById("modal-backdrop").classList.remove("open");currentModal=null;};
-document.getElementById("modal-backdrop").onclick=e=>{if(e.target.id==="modal-backdrop"){document.getElementById("modal-backdrop").classList.remove("open");currentModal=null;}};
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){document.getElementById("modal-backdrop").classList.remove("open");currentModal=null;}});
+// modal close listeners moved to DOMContentLoaded
 
 // ── Boot ───────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
@@ -1073,19 +1027,64 @@ document.addEventListener("DOMContentLoaded", async () => {
     btn.addEventListener("click", () => switchTab(btn.dataset.tab));
   });
 
-  // Profile touch listeners
-  document.querySelectorAll(".profile-card").forEach(btn => {
-    btn.addEventListener("touchend", function(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      selectProfile(this.getAttribute("data-user"));
-    });
-    btn.addEventListener("click", function(e) {
-      selectProfile(this.getAttribute("data-user"));
-    });
+  // Profile chip + bottom profile button → show profile screen
+  document.getElementById("profile-chip").addEventListener("click", () => {
+    document.getElementById("profile-screen").classList.remove("gone");
+  });
+  document.getElementById("profile-bottom-tab").addEventListener("click", () => {
+    document.getElementById("profile-screen").classList.remove("gone");
   });
 
-  // Genre filter in list
+  // Profile card buttons
+  document.querySelectorAll(".profile-card").forEach(btn => {
+    btn.addEventListener("click", () => selectProfile(btn.dataset.user));
+    btn.addEventListener("touchend", e => { e.preventDefault(); selectProfile(btn.dataset.user); });
+  });
+
+  // Scroll to top
+  document.getElementById("scroll-top").addEventListener("click", () => {
+    window.scrollTo({top:0, behavior:"smooth"});
+  });
+  window.addEventListener("scroll", () => {
+    const btn = document.getElementById("scroll-top");
+    if (!btn) return;
+    if (window.scrollY > 400) btn.classList.add("visible");
+    else btn.classList.remove("visible");
+  }, { passive: true });
+
+  // Genre bar (feed)
+  document.getElementById("genre-bar").addEventListener("click", e => {
+    const btn = e.target.closest(".pill");
+    if (!btn) return;
+    document.querySelectorAll("#genre-bar .pill").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    const g = parseInt(btn.dataset.genre);
+    currentGenre = g;
+    const rows = document.getElementById("feed-rows");
+    if (g===0) { initFeed(); return; }
+    rows.innerHTML = buildSection("genre", btn.textContent);
+    sectionTmdbPath["genre"] = {path:"/discover/movie", params:{with_genres:g, sort_by:"popularity.desc"}};
+    if (genreCache[g]) { fillRow("genre",genreCache[g]); return; }
+    tmdb("/discover/movie",{with_genres:g,sort_by:"popularity.desc"}).then(d=>{
+      const ms=(d.results||[]).filter(m=>m.poster_path);
+      ms.forEach(m=>movieCache[m.id]=m);
+      genreCache[g]=ms;
+      fillRow("genre",ms);
+    }).catch(()=>fillRow("genre",[]));
+  });
+
+  // Filter bar (my list)
+  document.querySelector(".filter-bar").addEventListener("click", e => {
+    const btn = e.target.closest(".pill");
+    if (!btn || !btn.dataset.filter) return;
+    document.querySelectorAll(".filter-bar .pill").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    listFilter = btn.dataset.filter;
+    renderList();
+  });
+  document.getElementById("list-sort").addEventListener("change", renderList);
+
+  // Genre filter (my list)
   document.getElementById("genre-filter-bar").addEventListener("click", e => {
     const btn = e.target.closest(".pill");
     if (!btn || !btn.dataset.gfilter) return;
@@ -1095,13 +1094,42 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderList();
   });
 
-  // Scroll to top
-  window.addEventListener("scroll", () => {
-    const btn = document.getElementById("scroll-top");
-    if (!btn) return;
-    if (window.scrollY > 400) btn.classList.add("visible");
-    else btn.classList.remove("visible");
-  }, { passive: true });
+  // Search input
+  document.getElementById("search-input").addEventListener("input", e => {
+    clearTimeout(searchTimer);
+    const v = e.target.value.trim();
+    if (!v) { showSuggestions(); document.getElementById("search-loading").style.display="none"; return; }
+    document.getElementById("search-header").style.display = "none";
+    document.getElementById("search-loading").style.display = "inline";
+    searchTimer = setTimeout(async () => {
+      try {
+        const d = await tmdb("/search/movie", {query:v, include_adult:false});
+        const ms = (d.results||[]).filter(m=>m.poster_path).slice(0,20);
+        ms.forEach(m=>movieCache[m.id]=m);
+        document.getElementById("search-results").innerHTML = ms.map(m=>cardHTML(m)).join("");
+        document.getElementById("search-empty").style.display = ms.length===0 ? "block":"none";
+      } catch {}
+      document.getElementById("search-loading").style.display = "none";
+    }, 400);
+  });
+
+  // Modal close
+  document.getElementById("modal-close").addEventListener("click", () => {
+    document.getElementById("modal-backdrop").classList.remove("open");
+    currentModal = null;
+  });
+  document.getElementById("modal-backdrop").addEventListener("click", e => {
+    if (e.target.id === "modal-backdrop") {
+      document.getElementById("modal-backdrop").classList.remove("open");
+      currentModal = null;
+    }
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+      document.getElementById("modal-backdrop").classList.remove("open");
+      currentModal = null;
+    }
+  });
 
   if (currentUser) {
     document.getElementById("profile-screen").classList.add("gone");
@@ -1112,6 +1140,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   await initFirebase();
   updateListCount();
   initFeed();
+
+  // Expose functions used in inline onclick handlers (required for type="module")
+  window.openModal      = openModal;
+  window.addToList      = addToList;
+  window.removeFromList = removeFromList;
+  window.cycleStatus    = cycleStatus;
+  window.selectProfile  = selectProfile;
+  window.loadMoreSection= loadMoreSection;
 });
 </script>
 </body>
