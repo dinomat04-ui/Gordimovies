@@ -385,7 +385,9 @@ nav{position:sticky;top:0;z-index:500;background:rgba(8,8,16,.94);backdrop-filte
   </div>
 </div>
 
-<script type="module">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
 const KEY  = "67ecc6d2e2f83ce31c75bc966b423135";
 const BASE = "https://api.themoviedb.org/3";
 const IMG  = (p,s="w342") => p ? `https://image.tmdb.org/t/p/${s}${p}` : "";
@@ -510,10 +512,7 @@ function addSwipe(el, id) {
     dragging = false;
   }, { passive: true });
 }
-// ── Firebase ───────────────────────────────────────────────────────
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
+// ── Firebase (loaded via compat scripts above) ─────────────────────
 const firebaseConfig = {
   apiKey: "AIzaSyDc0v4nsW2ns3YeOWQVcmUje1tKSCsxiws",
   authDomain: "gordimovies.firebaseapp.com",
@@ -523,38 +522,32 @@ const firebaseConfig = {
   appId: "1:655436442571:web:c7ef5cb0960f34d76e244e"
 };
 
-const fbApp = initializeApp(firebaseConfig);
-const db    = getFirestore(fbApp);
-const LIST_DOC = doc(db, "gordimovies", "watchlist");
+firebase.initializeApp(firebaseConfig);
+const db      = firebase.firestore();
+const LIST_DOC = db.collection("gordimovies").doc("watchlist");
 
-// Save to Firestore
 async function saveList() {
   try {
-    await setDoc(LIST_DOC, { movies: watchlist });
+    await LIST_DOC.set({ movies: watchlist });
   } catch(e) {
-    // Fallback to localStorage
     try { localStorage.setItem("gordimovies-list", JSON.stringify(watchlist)); } catch {}
   }
 }
 
-// Load once then listen for real-time updates
 async function initFirebase() {
   try {
-    const snap = await getDoc(LIST_DOC);
-    if (snap.exists()) {
+    const snap = await LIST_DOC.get();
+    if (snap.exists) {
       watchlist = snap.data().movies || [];
     } else {
-      // Migrate from localStorage if exists
       try {
         const local = JSON.parse(localStorage.getItem("gordimovies-list") || "[]");
         if (local.length > 0) { watchlist = local; await saveList(); }
       } catch {}
     }
-    // Real-time listener — updates UI when other device makes changes
-    onSnapshot(LIST_DOC, (snap) => {
-      if (!snap.exists()) return;
+    LIST_DOC.onSnapshot(snap => {
+      if (!snap.exists) return;
       const incoming = snap.data().movies || [];
-      // Only update if different to avoid loops
       if (JSON.stringify(incoming) !== JSON.stringify(watchlist)) {
         watchlist = incoming;
         updateListCount();
@@ -564,7 +557,6 @@ async function initFirebase() {
       }
     });
   } catch(e) {
-    // Offline fallback
     try { watchlist = JSON.parse(localStorage.getItem("gordimovies-list") || "[]"); } catch {}
   }
 }
@@ -607,7 +599,7 @@ function cardInner(m) {
   const inList = isInList(m.id);
   const yr = (m.release_date||"").slice(0,4);
   const sc = m.vote_average > 0 ? m.vote_average.toFixed(1) : "";
-  return `<div class="card" onclick="openModal(${m.id})">
+  return `<div class="card" data-action="open" data-id="${m.id}">
       ${m.poster_path
         ? `<img src="${IMG(m.poster_path)}" alt="${esc(m.title)}" loading="lazy">`
         : `<div class="card-placeholder">🎬</div>`}
@@ -616,7 +608,7 @@ function cardInner(m) {
       <div class="card-overlay">
         <div class="card-overlay-title">${esc(m.title)}</div>
         <div class="card-overlay-meta"><span>${yr}</span>${sc?`<span style="color:#f5c518;font-weight:700">★ ${sc}</span>`:""}</div>
-        <button class="add-btn ${inList?"in-list":""}" onclick="event.stopPropagation();addToList(${m.id})">${inList?"✓ Añadida":"+ Añadir"}</button>
+        <button class="add-btn ${inList?"in-list":""}" data-action="add" data-id="${m.id}">${inList?"✓ Añadida":"+ Añadir"}</button>
       </div>
     </div>
     <div class="card-name">${esc(m.title)}</div>`;
@@ -670,7 +662,7 @@ function renderSectionPage(id) {
       return `<div class="card-wrap fu" style="animation-delay:${delay*30}ms" data-id="${m.id}">${cardInner(m)}</div>`;
     }).join("")}</div>` +
     (hasMore
-      ? `<div class="load-more-wrap"><button class="load-more-btn" onclick="loadMoreSection('${id}')">Cargar más (${all.length - shown.length} restantes)</button></div>`
+      ? `<div class="load-more-wrap"><button class="load-more-btn" data-action="loadmore" data-section="${id}">Cargar más (${all.length - shown.length} restantes)</button></div>`
       : "");
 }
 
@@ -764,7 +756,8 @@ function setHero(m) {
   document.getElementById("hero-meta").innerHTML =
     `${yr?`<span style="color:#bbb">${yr}</span>`:""}${sc?`<span style="color:#f5c518;font-weight:700">★ ${sc}/10</span>`:""}`;
   document.getElementById("hero-overview").textContent = m.overview||"";
-  document.getElementById("hero").onclick = ()=>openModal(m.id);
+  document.getElementById("hero").dataset.id = m.id;
+  document.getElementById("hero").dataset.action = "open";
   updateHeroBtn();
 }
 
@@ -774,7 +767,8 @@ function updateHeroBtn() {
   const inList = isInList(heroMovie.id);
   btn.textContent = inList ? "✓ En nuestra lista" : "+ Añadir a nuestra lista";
   btn.className = "hero-btn"+(inList?" in-list":"");
-  btn.onclick = inList ? null : e=>{e.stopPropagation();addToList(heroMovie.id);updateHeroBtn();};
+  btn.dataset.action = inList ? "" : "add-hero";
+  btn.dataset.id = heroMovie.id;
 }
 
 // ── Genre pills — moved to DOMContentLoaded ────────────────────────
@@ -909,12 +903,12 @@ function listCardHTML(m) {
     <div class="swipe-wrap" id="swipe-${m.id}">
       <div class="swipe-hint-watch">✅</div>
       <div class="swipe-hint-skip">✕</div>
-      <div class="swipe-card list-card" data-id="${m.id}" onclick="openModal(${m.id})" style="border:1px solid ${S_COLOR[st]}28">
+      <div class="swipe-card list-card" data-action="open" data-id="${m.id}" style="border:1px solid ${S_COLOR[st]}28">
         ${m.poster_path?`<img src="${IMG(m.poster_path)}" alt="${esc(m.title)}" loading="lazy">`:`<div class="card-placeholder" style="height:100%;background:#12121e">🎬</div>`}
         <div class="list-card-grad"></div>
         <div class="list-card-status" style="color:${S_COLOR[st]}">${S_EMOJI[st]}</div>
         ${stars>0?`<div class="list-card-stars">${"★".repeat(Math.min(stars,6))}</div>`:""}
-        <button class="list-card-remove" onclick="event.stopPropagation();removeFromList(${m.id})">✕</button>
+        <button class="list-card-remove" data-action="remove" data-id="${m.id}">✕</button>
       </div>
     </div>
     <div class="list-card-name">${esc(m.title)}</div>
@@ -960,10 +954,10 @@ function renderModal(id) {
 
   const actions=document.getElementById("modal-actions");
   if(!item){
-    actions.innerHTML=`<button class="modal-cta" onclick="addToList(${id})">+ Añadir a nuestra lista</button>`;
+    actions.innerHTML=`<button class="modal-cta" data-action="add" data-id="${id}">+ Añadir a nuestra lista</button>`;
   } else {
     const st = myStatus(item);
-    actions.innerHTML=`<div style="display:flex;gap:8px"><button class="status-btn" style="border:1px solid ${S_COLOR[st]};color:${S_COLOR[st]}" onclick="cycleStatus(${id})">${S_LABEL[st]}</button></div>`;
+    actions.innerHTML=`<div style="display:flex;gap:8px"><button class="status-btn" data-action="status" data-id="${id}" style="border:1px solid ${S_COLOR[st]};color:${S_COLOR[st]}">${S_LABEL[st]}</button></div>`;
   }
 
   const pbox=document.getElementById("modal-priority");
@@ -984,14 +978,15 @@ function renderModal(id) {
   document.getElementById("modal-overview").textContent=m.overview||"";
 }
 
-function renderStars(elId,val,color,onChange) {
-  const el=document.getElementById(elId); el.innerHTML="";
-  for(let i=1;i<=3;i++){
-    const btn=document.createElement("button");
-    btn.className="star-btn";btn.textContent="★";
-    btn.style.color=i<=val?color:"#1e1e2e";
-    btn.style.transform=i<=val?"scale(1.15)":"scale(1)";
-    btn.onclick=e=>{e.stopPropagation();onChange(val===i?0:i);};
+function renderStars(elId, val, color, onChange) {
+  const el = document.getElementById(elId); el.innerHTML="";
+  for (let i=1; i<=3; i++) {
+    const btn = document.createElement("button");
+    btn.className = "star-btn";
+    btn.textContent = "★";
+    btn.style.color = i<=val ? color : "#1e1e2e";
+    btn.style.transform = i<=val ? "scale(1.15)" : "scale(1)";
+    btn.addEventListener("click", e => { e.stopPropagation(); onChange(val===i ? 0 : i); });
     el.appendChild(btn);
   }
 }
@@ -1021,6 +1016,21 @@ function updateItem(id,updates) {
 
 // ── Boot ───────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
+
+  // ── Global click delegation ──────────────────────────────────────
+  document.addEventListener("click", e => {
+    const el = e.target.closest("[data-action]");
+    if (!el) return;
+    const action = el.dataset.action;
+    const id     = parseInt(el.dataset.id);
+
+    if (action === "open")     { openModal(id); }
+    if (action === "add")      { e.stopPropagation(); addToList(id); }
+    if (action === "add-hero") { e.stopPropagation(); addToList(id); }
+    if (action === "remove")   { e.stopPropagation(); removeFromList(id); }
+    if (action === "status")   { cycleStatus(id); }
+    if (action === "loadmore") { loadMoreSection(el.dataset.section); }
+  });
 
   // Tab buttons (top + bottom)
   document.querySelectorAll(".tab-btn[data-tab], .bottom-tab[data-tab]").forEach(btn => {
@@ -1140,14 +1150,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   await initFirebase();
   updateListCount();
   initFeed();
-
-  // Expose functions used in inline onclick handlers (required for type="module")
-  window.openModal      = openModal;
-  window.addToList      = addToList;
-  window.removeFromList = removeFromList;
-  window.cycleStatus    = cycleStatus;
-  window.selectProfile  = selectProfile;
-  window.loadMoreSection= loadMoreSection;
 });
 </script>
 </body>
