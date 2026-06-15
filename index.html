@@ -42,8 +42,30 @@ button,input,select{font-family:inherit}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes shimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}
 @keyframes ken{from{transform:scale(1)}to{transform:scale(1.06)}}
+@keyframes tabIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes confettiFall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
 .fu{animation:fadeUp .35s cubic-bezier(.16,1,.3,1) both}
 .skel{background:linear-gradient(90deg,#10101c 0%,#1c1c2e 50%,#10101c 100%);background-size:600px 100%;animation:shimmer 1.5s infinite linear;border-radius:8px}
+.view{display:none}.view.active{display:block;animation:tabIn .3s cubic-bezier(.16,1,.3,1) both}
+
+/* Rating stars (post-watch) */
+.rating-box{margin-top:14px;padding:14px;background:var(--surface);border-radius:10px;border:1px solid var(--border)}
+.rating-title{font-size:10px;font-weight:700;color:#444;letter-spacing:1.5px;margin-bottom:10px}
+.rating-row{display:flex;gap:4px}
+.rating-star{background:none;border:none;cursor:pointer;font-size:24px;padding:0;line-height:1;transition:transform .15s,filter .15s;color:#1e1e2e}
+.rating-star.lit{color:#f5c518;filter:drop-shadow(0 0 4px rgba(245,197,24,.4))}
+.rating-star:hover{transform:scale(1.2)}
+
+/* Confetti */
+#confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:9999;display:none}
+.confetti-piece{position:fixed;top:-20px;pointer-events:none;z-index:9999;border-radius:2px;animation:confettiFall linear forwards}
+.rating-box{margin-top:12px;padding:12px 14px;background:var(--surface);border-radius:10px;border:1px solid #1e1e30}
+.rating-title{font-size:9px;color:#444;font-weight:700;letter-spacing:1.5px;margin-bottom:8px}
+.rating-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.rating-row:last-child{margin-bottom:0}
+.rating-emoji{font-size:14px;width:22px;text-align:center}
+.rating-stars{display:flex;gap:1px}
+.rstar{background:none;border:none;cursor:pointer;padding:0;font-size:18px;line-height:1;transition:color .1s,transform .12s;color:#222}
 /* Top bar - just logo + profile chip */
 nav{position:sticky;top:0;z-index:500;background:rgba(8,8,16,.94);backdrop-filter:blur(16px);border-bottom:1px solid #14141e;display:flex;align-items:center;height:52px;padding:0 16px;gap:8px}
 .brand{font-family:'Bebas Neue';font-size:24px;letter-spacing:2.5px;margin-right:auto;line-height:1;flex-shrink:0;display:flex;align-items:baseline;gap:0}
@@ -61,8 +83,6 @@ nav{position:sticky;top:0;z-index:500;background:rgba(8,8,16,.94);backdrop-filte
 .bottom-tab.active{color:var(--accent)}
 .bottom-tab-icon{font-size:20px;line-height:1}
 .bottom-tab-label{font-size:9px;font-weight:700;letter-spacing:.3px}
-
-.view{display:none}.view.active{display:block}
 
 /* On mobile use bottom nav, hide top tabs */
 @media(max-width:600px){
@@ -231,6 +251,8 @@ nav{position:sticky;top:0;z-index:500;background:rgba(8,8,16,.94);backdrop-filte
 </head>
 <body>
 
+<canvas id="confetti-canvas"></canvas>
+
 <!-- Profile selector -->
 <div class="profile-screen" id="profile-screen">
   <div class="profile-title">GORDIMOVIES</div>
@@ -380,6 +402,7 @@ nav{position:sticky;top:0;z-index:500;background:rgba(8,8,16,.94);backdrop-filte
         <div class="pct-box" id="pct-box"><div class="pct-label">GANAS</div><div class="pct-val" id="pct-val"></div></div>
       </div>
       <div class="modal-overview" id="modal-overview"></div>
+      <div id="modal-rating"></div>
       <div class="cast-section" id="modal-cast"></div>
     </div>
   </div>
@@ -461,6 +484,88 @@ function renderStreaming(providers) {
 
 // ── Genre filter for list ──────────────────────────────────────────
 let listGenreFilter = 0;
+
+// ── Confetti ───────────────────────────────────────────────────────
+function launchConfetti() {
+  const colors = ["#4ecb8d","#9b59f5","#e8445a","#f0d9b5","#f5c518","#fff","#c9a84c"];
+  const shapes = ["■","●","▲","★","♥"];
+  for (let i = 0; i < 80; i++) {
+    const el = document.createElement("div");
+    el.className = "confetti-piece";
+    el.textContent = shapes[Math.floor(Math.random()*shapes.length)];
+    el.style.cssText = `
+      left:${Math.random()*100}vw;
+      color:${colors[Math.floor(Math.random()*colors.length)]};
+      font-size:${10+Math.random()*14}px;
+      animation-duration:${1.5+Math.random()*2}s;
+      animation-delay:${Math.random()*0.8}s;
+    `;
+    document.body.appendChild(el);
+    el.addEventListener("animationend", () => el.remove());
+  }
+}
+
+function checkConfetti(item) {
+  // Fire confetti if both users gave max priority (3 stars each)
+  if ((item.pu_maty||0) >= 3 && (item.pu_valen||0) >= 3) {
+    launchConfetti();
+  }
+}
+
+// ── Rating (post-watch) ────────────────────────────────────────────
+function renderRating(id) {
+  const item = getItem(id);
+  const el = document.getElementById("modal-rating");
+  if (!el) return;
+
+  // Only show if at least one user has watched it
+  const matyWatched  = (item?.status_maty  || "pending") === "watched";
+  const valenWatched = (item?.status_valen || "pending") === "watched";
+  if (!item || (!matyWatched && !valenWatched)) { el.innerHTML=""; return; }
+
+  const css = getComputedStyle(document.documentElement);
+  const accentMe    = css.getPropertyValue("--accent").trim();
+  const accentOther = css.getPropertyValue("--accent2").trim();
+  const me    = PROFILES[currentUser];
+  const other = PROFILES[otherUser()];
+  const myRating    = item[`rating_${currentUser}`]  || 0;
+  const otherRating = item[`rating_${otherUser()}`]  || 0;
+  const myWatched   = (item[`status_${currentUser}`]  || "pending") === "watched";
+  const othWatched  = (item[`status_${otherUser()}`]  || "pending") === "watched";
+
+  el.innerHTML = `
+    <div class="rating-box">
+      <div class="rating-title">CALIFICACIÓN</div>
+      ${myWatched ? `
+        <div class="rating-row">
+          <span class="rating-emoji">${me.emoji}</span>
+          <div class="rating-stars" id="ratingMe"></div>
+        </div>` : ""}
+      ${othWatched ? `
+        <div class="rating-row">
+          <span class="rating-emoji">${other.emoji}</span>
+          <div class="rating-stars" id="ratingOther"></div>
+        </div>` : ""}
+    </div>`;
+
+  if (myWatched) renderRatingStars("ratingMe",   myRating,    accentMe,    v => updateItem(id, {[`rating_${currentUser}`]:  v}));
+  if (othWatched) renderRatingStars("ratingOther", otherRating, accentOther, v => updateItem(id, {[`rating_${otherUser()}`]: v}));
+}
+
+function renderRatingStars(elId, val, color, onChange) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = "";
+  for (let i = 1; i <= 5; i++) {
+    const btn = document.createElement("button");
+    btn.className = "rstar";
+    btn.textContent = "★";
+    btn.style.color = i <= val ? color : "#222";
+    btn.style.transform = i <= val ? "scale(1.1)" : "scale(1)";
+    btn.addEventListener("click", e => { e.stopPropagation(); onChange(val === i ? 0 : i); });
+    el.appendChild(btn);
+  }
+}
 
 // ── Scroll to top ──────────────────────────────────────────────────
 // (moved to DOMContentLoaded boot)
@@ -585,7 +690,12 @@ function switchTab(tab) {
   document.querySelectorAll(".tab-btn, .bottom-tab[data-tab]").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
   document.querySelectorAll(`[data-tab="${tab}"]`).forEach(b => b.classList.add("active"));
-  document.getElementById("view-"+tab).classList.add("active");
+  const view = document.getElementById("view-"+tab);
+  // Force animation retrigger
+  view.style.animation = "none";
+  view.offsetHeight; // reflow
+  view.style.animation = "";
+  view.classList.add("active");
   window.scrollTo({top:0, behavior:"instant"});
   if (tab === "mylist") renderList();
   if (tab === "search" && searchSuggestions.length === 0) initSearchSuggestions();
@@ -782,6 +892,7 @@ async function addToList(id) {
     ...m,
     status_maty:"pending", status_valen:"pending",
     pu_maty:0, pu_valen:0,
+    rating_maty:0, rating_valen:0,
     ts:Date.now()
   });
   saveList(); updateListCount(); refreshCards(); updateHeroBtn();
@@ -976,6 +1087,7 @@ function renderModal(id) {
   } else pbox.style.display="none";
 
   document.getElementById("modal-overview").textContent=m.overview||"";
+  renderRating(id);
 }
 
 function renderStars(elId, val, color, onChange) {
@@ -1005,11 +1117,14 @@ function cycleStatus(id) {
   updateItem(id,{[`status_${currentUser}`]: order[(order.indexOf(cur)+1)%3]});
 }
 
-function updateItem(id,updates) {
-  const idx=watchlist.findIndex(m=>m.id===id);
-  if(idx===-1){setTimeout(()=>updateItem(id,updates),50);return;}
-  watchlist[idx]={...watchlist[idx],...updates};
-  saveList(); renderModal(id); renderList();
+function updateItem(id, updates) {
+  const idx = watchlist.findIndex(m => m.id === id);
+  if (idx === -1) { setTimeout(() => updateItem(id, updates), 50); return; }
+  watchlist[idx] = { ...watchlist[idx], ...updates };
+  saveList();
+  renderModal(id);
+  renderList();
+  checkConfetti(watchlist[idx]);
 }
 
 // modal close listeners moved to DOMContentLoaded
